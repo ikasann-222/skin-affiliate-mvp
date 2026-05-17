@@ -170,17 +170,20 @@ export default function App() {
             </div>
           </div>
           <div className="hero-visual" aria-hidden="true">
-            <div>
-              <span>Rule based</span>
-              <strong>商品選定はAIに任せない</strong>
+            <div className="hero-summary-card">
+              <span>診断で見ること</span>
+              <strong>肌質・悩み・予算・欲しいカテゴリ</strong>
+              <p>ボタン選択を中心に、商品候補に必要な情報だけを整理します。</p>
             </div>
-            <div>
-              <span>Ingredients</span>
-              <strong>成分特徴を短く確認</strong>
+            <div className="hero-summary-card">
+              <span>推薦の仕組み</span>
+              <strong>商品タグと入力内容を照合</strong>
+              <p>化粧水や美容液などのカテゴリも結果に反映します。</p>
             </div>
-            <div>
-              <span>Affiliate</span>
-              <strong>楽天リンクへすぐ移動</strong>
+            <div className="hero-summary-card hero-summary-accent">
+              <span>結果画面</span>
+              <strong>候補から商品ページへ</strong>
+              <p>気になる商品は画像・商品名・ボタンから確認できます。</p>
             </div>
           </div>
         </section>

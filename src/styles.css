@@ -18,7 +18,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    linear-gradient(rgba(244, 248, 246, 0.9), rgba(244, 248, 246, 0.94)),
+    linear-gradient(rgba(244, 248, 246, 0.82), rgba(244, 248, 246, 0.96)),
     url("https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=1600&q=80") center/cover fixed;
 }
 
@@ -61,9 +61,9 @@ h3 {
 .hero {
   min-height: calc(100vh - 56px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 410px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
   align-items: center;
-  gap: 42px;
+  gap: 34px;
 }
 
 .hero-copy,
@@ -76,13 +76,14 @@ h3 {
 }
 
 .hero-copy {
-  gap: 22px;
+  gap: 18px;
 }
 
 .hero h1 {
-  max-width: 12ch;
-  font-size: clamp(2.5rem, 8vw, 4.8rem);
-  line-height: 1.04;
+  max-width: 15ch;
+  font-size: clamp(2rem, 5.4vw, 3.35rem);
+  line-height: 1.14;
+  font-weight: 800;
 }
 
 .hero p,
@@ -95,8 +96,8 @@ h3 {
 }
 
 .hero p {
-  max-width: 660px;
-  font-size: 1.05rem;
+  max-width: 560px;
+  font-size: 1rem;
 }
 
 .kicker {
@@ -167,22 +168,28 @@ h3 {
 
 .hero-visual {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  align-self: stretch;
+  align-content: center;
 }
 
-.hero-visual div {
+.hero-summary-card {
   display: grid;
-  gap: 8px;
-  min-height: 128px;
-  align-content: end;
+  gap: 6px;
+  min-height: 0;
+  align-content: start;
   border: 1px solid rgba(196, 216, 209, 0.9);
   border-radius: 8px;
-  padding: 18px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 18px 38px rgba(42, 73, 64, 0.08);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 30px rgba(42, 73, 64, 0.08);
 }
 
-.hero-visual span,
+.hero-summary-accent {
+  background: rgba(237, 245, 242, 0.94);
+}
+
+.hero-summary-card span,
 .brand,
 .price {
   color: #3b7a69;
@@ -190,8 +197,14 @@ h3 {
   font-weight: 800;
 }
 
-.hero-visual strong {
-  font-size: 1.15rem;
+.hero-summary-card strong {
+  font-size: 1.06rem;
+  line-height: 1.35;
+}
+
+.hero-summary-card p {
+  font-size: 0.93rem;
+  line-height: 1.55;
 }
 
 .panel,
