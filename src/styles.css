@@ -60,10 +60,12 @@ h3 {
 
 .hero {
   min-height: calc(100vh - 56px);
+  width: min(100vw - 28px, 1280px);
+  margin-inline: calc((980px - min(100vw - 28px, 1280px)) / 2);
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 430px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
   align-items: center;
-  gap: 56px;
+  gap: 80px;
 }
 
 .hero-copy,
@@ -80,8 +82,8 @@ h3 {
 }
 
 .hero h1 {
-  max-width: 16.5ch;
-  font-size: clamp(1.75rem, 4.15vw, 2.58rem);
+  max-width: 18ch;
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
   line-height: 1.14;
   font-weight: 800;
 }
@@ -486,6 +488,8 @@ textarea {
 
   .hero {
     min-height: auto;
+    width: auto;
+    margin-inline: 0;
     grid-template-columns: 1fr;
     gap: 20px;
     padding: 18px 0 32px;
