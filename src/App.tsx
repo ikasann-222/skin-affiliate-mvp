@@ -149,7 +149,10 @@ export default function App() {
         <section className="hero">
           <div className="hero-copy">
             <p className="kicker">Skin Match</p>
-            <h1>30秒で、今の肌に近いスキンケア候補へ。</h1>
+            <h1>
+              <span>30秒で、</span>
+              <span>今の肌に近いスキンケア候補へ。</span>
+            </h1>
             <p>
               肌質、悩み、避けたい成分から商品DBをタグマッチ。SNSの口コミを追い続ける前に、候補を短く整理できます。
             </p>

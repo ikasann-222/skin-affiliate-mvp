@@ -80,10 +80,15 @@ h3 {
 }
 
 .hero h1 {
-  max-width: 15ch;
-  font-size: clamp(2rem, 5.4vw, 3.35rem);
+  max-width: 18ch;
+  font-size: clamp(1.9rem, 4.8vw, 3.05rem);
   line-height: 1.14;
   font-weight: 800;
+}
+
+.hero h1 span {
+  display: block;
+  white-space: nowrap;
 }
 
 .hero p,
