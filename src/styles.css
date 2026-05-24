@@ -363,6 +363,17 @@ textarea {
   font-weight: 800;
 }
 
+.result-status {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.result-status p {
+  color: #52645f;
+  font-size: 0.92rem;
+}
+
 .category-row span {
   background: #e3f0ff;
   color: #245074;

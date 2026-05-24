@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ingredientGuides } from "./data/products";
-import { buildPriorityTags, recommendProducts } from "./services/recommendation";
+import { buildPriorityTags, rankProducts, recommendProducts } from "./services/recommendation";
+import { fetchRakutenProducts } from "./services/rakutenProducts";
 import { clearDiagnosis, loadDiagnosis, saveDiagnosis } from "./services/storage";
 import type {
   AgeRange,
@@ -10,6 +11,7 @@ import type {
   DiagnosisInput,
   Gender,
   LifestyleHabit,
+  Product,
   SkinTrouble,
   SkinType,
 } from "./types";
@@ -105,8 +107,47 @@ export default function App() {
   const [hasStoredDiagnosis, setHasStoredDiagnosis] = useState(Boolean(storedDiagnosis));
   const [page, setPage] = useState<Page>(storedDiagnosis ? "result" : "top");
   const [diagnosis, setDiagnosis] = useState<DiagnosisInput>(normalizeDiagnosis(storedDiagnosis));
-  const recommendations = useMemo(() => recommendProducts(diagnosis), [diagnosis]);
+  const [rakutenProducts, setRakutenProducts] = useState<Product[]>([]);
+  const [isLoadingRakutenProducts, setIsLoadingRakutenProducts] = useState(false);
+  const [rakutenProductError, setRakutenProductError] = useState("");
+  const localRecommendations = useMemo(() => recommendProducts(diagnosis), [diagnosis]);
+  const rakutenRecommendations = useMemo(() => rankProducts(diagnosis, rakutenProducts, 24), [diagnosis, rakutenProducts]);
+  const recommendations = rakutenRecommendations.length > 0 ? rakutenRecommendations : localRecommendations;
   const priorityTags = useMemo(() => buildPriorityTags(diagnosis).slice(0, 9), [diagnosis]);
+
+  useEffect(() => {
+    if (page !== "result") {
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingRakutenProducts(true);
+    setRakutenProductError("");
+
+    fetchRakutenProducts(diagnosis)
+      .then((products) => {
+        if (!isActive) {
+          return;
+        }
+        setRakutenProducts(products);
+      })
+      .catch((error: unknown) => {
+        if (!isActive) {
+          return;
+        }
+        setRakutenProducts([]);
+        setRakutenProductError(error instanceof Error ? error.message : "楽天商品を取得できませんでした。");
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingRakutenProducts(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [diagnosis, page]);
 
   function showResults() {
     const nextDiagnosis = {
@@ -114,6 +155,8 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setDiagnosis(nextDiagnosis);
+    setRakutenProducts([]);
+    setRakutenProductError("");
     saveDiagnosis(nextDiagnosis);
     setHasStoredDiagnosis(true);
     setPage("result");
@@ -354,12 +397,25 @@ export default function App() {
             <div className="section-head">
               <p className="kicker">Result</p>
               <h2>おすすめ商品</h2>
-              <p>入力内容から優先タグを作り、商品DBのタグ一致数と価格で並べています。</p>
+              <p>
+                {rakutenRecommendations.length > 0
+                  ? "楽天市場から取得した商品を、入力内容との一致度で並べています。"
+                  : "入力内容から優先タグを作り、商品DBのタグ一致数と価格で並べています。"}
+              </p>
             </div>
             <div className="tag-row">
               {priorityTags.map((tag) => (
                 <span key={tag}>{tag}</span>
               ))}
+            </div>
+            <div className="result-status">
+              {isLoadingRakutenProducts ? <p>楽天市場の商品を取得しています...</p> : null}
+              {!isLoadingRakutenProducts && rakutenRecommendations.length > 0 ? (
+                <p>楽天市場から{rakutenProducts.length}件取得しました。</p>
+              ) : null}
+              {!isLoadingRakutenProducts && rakutenProductError ? (
+                <p>楽天API未設定または取得エラーのため、手入力の商品DBを表示しています。</p>
+              ) : null}
             </div>
           </section>
 

@@ -141,10 +141,10 @@ function reasonFor(product: Product, input: DiagnosisInput, matchedTags: string[
   return `${skinTypes}で${concerns}が気になる入力のため、${matched}に合う商品を上位にしています。${product.name}は${ingredients}などの成分特徴があり、${sensitivity}`;
 }
 
-export function recommendProducts(input: DiagnosisInput, limit = 3): Recommendation[] {
+export function rankProducts(input: DiagnosisInput, productPool: Product[], limit = 12): Recommendation[] {
   const priorityTags = buildPriorityTags(input);
 
-  return products
+  return productPool
     .filter((product) => matchesDesiredCosmetics(product, input))
     .map((product) => {
       const { score, matchedTags } = scoreProduct(product, priorityTags, input);
@@ -157,4 +157,8 @@ export function recommendProducts(input: DiagnosisInput, limit = 3): Recommendat
     })
     .sort((a, b) => b.score - a.score || a.product.price - b.product.price)
     .slice(0, limit);
+}
+
+export function recommendProducts(input: DiagnosisInput, limit = 12): Recommendation[] {
+  return rankProducts(input, products, limit);
 }
