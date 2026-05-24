@@ -411,10 +411,18 @@ export default function App() {
             <div className="result-status">
               {isLoadingRakutenProducts ? <p>楽天市場の商品を取得しています...</p> : null}
               {!isLoadingRakutenProducts && rakutenRecommendations.length > 0 ? (
-                <p>楽天市場から{rakutenProducts.length}件取得しました。</p>
+                <p className="status-success">楽天市場から{rakutenProducts.length}件取得しました。楽天の商品を表示しています。</p>
+              ) : null}
+              {!isLoadingRakutenProducts && !rakutenProductError && rakutenProducts.length === 0 ? (
+                <p className="status-fallback">楽天市場の商品が0件だったため、手入力の商品DBを表示しています。</p>
+              ) : null}
+              {!isLoadingRakutenProducts && rakutenProducts.length > 0 && rakutenRecommendations.length === 0 ? (
+                <p className="status-fallback">
+                  楽天市場から{rakutenProducts.length}件取得しましたが、条件に合う商品が少ないため手入力の商品DBを表示しています。
+                </p>
               ) : null}
               {!isLoadingRakutenProducts && rakutenProductError ? (
-                <p>楽天API未設定または取得エラーのため、手入力の商品DBを表示しています。</p>
+                <p className="status-fallback">楽天API未設定または取得エラーのため、手入力の商品DBを表示しています。</p>
               ) : null}
             </div>
           </section>

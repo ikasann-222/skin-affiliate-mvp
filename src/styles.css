@@ -370,8 +370,21 @@ textarea {
 }
 
 .result-status p {
+  border-radius: 8px;
   color: #52645f;
   font-size: 0.92rem;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.result-status .status-success {
+  background: #e7f5ee;
+  color: #24584b;
+}
+
+.result-status .status-fallback {
+  background: #fff4df;
+  color: #76501a;
 }
 
 .category-row span {
