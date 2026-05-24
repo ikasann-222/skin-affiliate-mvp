@@ -1,4 +1,5 @@
 const RAKUTEN_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401";
+const SITE_URL = "https://skin-affiliate-mvp.vercel.app";
 
 function unique(items) {
   return Array.from(new Set(items.filter(Boolean)));
@@ -33,6 +34,10 @@ function buildKeywords(input) {
 function describeRakutenError(status, body, keyword) {
   const description = body?.error_description || body?.error || body?.message || "詳細なし";
   return `${status} ${keyword}: ${description}`;
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function normalizeItem(rawItem, category, input) {
@@ -84,50 +89,56 @@ export default async function handler(request, response) {
   const productsById = new Map();
   const requestErrors = [];
 
-  await Promise.all(
-    keywords.map(async (keyword) => {
-      const category = input.desiredCosmetics?.find((item) => keyword.includes(item)) || "スキンケア";
-      const params = new URLSearchParams({
-        applicationId,
-        accessKey,
-        format: "json",
-        formatVersion: "2",
-        keyword,
-        hits: "30",
-        field: "0",
-        imageFlag: "1",
-        orFlag: "1",
-        sort: "standard",
-      });
+  for (const keyword of keywords.slice(0, 6)) {
+    const category = input.desiredCosmetics?.find((item) => keyword.includes(item)) || "スキンケア";
+    const params = new URLSearchParams({
+      applicationId,
+      accessKey,
+      format: "json",
+      formatVersion: "2",
+      keyword,
+      hits: "30",
+      field: "0",
+      imageFlag: "1",
+      orFlag: "1",
+      sort: "standard",
+    });
 
-      if (affiliateId) {
-        params.set("affiliateId", affiliateId);
-      }
+    if (affiliateId) {
+      params.set("affiliateId", affiliateId);
+    }
 
-      const rakutenResponse = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`, {
-        headers: {
-          accessKey,
-        },
-      });
-      const data = await rakutenResponse.json().catch(() => ({}));
-      if (!rakutenResponse.ok) {
-        requestErrors.push(describeRakutenError(rakutenResponse.status, data, keyword));
+    const rakutenResponse = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Referer: SITE_URL,
+        Origin: SITE_URL,
+      },
+    });
+    const data = await rakutenResponse.json().catch(() => ({}));
+    if (!rakutenResponse.ok) {
+      requestErrors.push(describeRakutenError(rakutenResponse.status, data, keyword));
+      await wait(350);
+      continue;
+    }
+
+    const entries = data.Items || data.items || [];
+    entries.forEach((entry) => {
+      const item = entry.Item || entry.item || entry;
+      if (!item?.itemCode || !item?.itemName || !item?.itemPrice) {
         return;
       }
 
-      const entries = data.Items || data.items || [];
-      entries.forEach((entry) => {
-        const item = entry.Item || entry.item || entry;
-        if (!item?.itemCode || !item?.itemName || !item?.itemPrice) {
-          return;
-        }
+      productsById.set(item.itemCode, normalizeItem(item, category, input));
+    });
 
-        productsById.set(item.itemCode, normalizeItem(item, category, input));
-      });
-    }),
-  );
+    if (productsById.size >= 60) {
+      break;
+    }
 
-  if (productsById.size === 0 && requestErrors.length === keywords.length) {
+    await wait(350);
+  }
+
+  if (productsById.size === 0 && requestErrors.length > 0) {
     return response.status(502).json({ error: `楽天APIへのリクエストに失敗しました: ${requestErrors.slice(0, 3).join(", ")}` });
   }
 
