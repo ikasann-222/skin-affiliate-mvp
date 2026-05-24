@@ -64,6 +64,10 @@ function cleanItemName(itemName, category) {
     /【[^】]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^】]*】/gi,
     /\[[^\]]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^\]]*\]/gi,
     /(楽天ランキング\s*\d+位|ランキング\s*\d+位|送料無料|ポイント\d+倍|最大P\d+倍|P\d+倍|クーポン|あす楽|メール便|公式ショップ|正規品|国内|海外|お試しセット|トライアルセット)/gi,
+    /(半額|割引|値引き|セール|SALE|限定|期間限定|タイムセール)[^!！。]*[!！。]?/gi,
+    /\d{1,2}\s*[\/月]\s*\d{1,2}\s*\d{1,2}:\d{2}\s*[~〜～-]\s*\d{1,2}:\d{2}\s*まで[!！]?/g,
+    /\d{1,2}\s+\d{1,2}\s+\d{1,2}:\d{2}\s*[~〜～-]\s*\d{1,2}:\d{2}\s*まで[!！]?/g,
+    /[\d,]+\s*円\s*[→〜~\-ー]\s*[\d,]+\s*円[!！]?/g,
   ];
   const noiseWords = new Set([
     "大人ニキビ",
@@ -87,6 +91,9 @@ function cleanItemName(itemName, category) {
     "3点",
     "お試し",
     "トライアル",
+    "公式",
+    "半額",
+    "限定",
   ]);
 
   let cleanedName = itemName.replace(/　/g, " ");
@@ -95,6 +102,7 @@ function cleanItemName(itemName, category) {
   });
   cleanedName = cleanedName
     .replace(/[【】\[\]]/g, " ")
+    .replace(/^\s*(公式|正規品|ショップ|店|販売店)\s+/g, " ")
     .replace(/\s*(クレンジング|洗顔|化粧水|ローション|乳液|美容液|クリーム|日焼け止め|UV|プライマー|エッセンス|ジェル|パック|マスク|オイル)\s*・.*/g, " $1");
 
   const compactTokens = cleanedName
