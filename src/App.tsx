@@ -422,7 +422,9 @@ export default function App() {
                 </p>
               ) : null}
               {!isLoadingRakutenProducts && rakutenProductError ? (
-                <p className="status-fallback">楽天API未設定または取得エラーのため、手入力の商品DBを表示しています。</p>
+                <p className="status-fallback">
+                  楽天API取得エラーのため、手入力の商品DBを表示しています。詳細: {rakutenProductError}
+                </p>
               ) : null}
             </div>
           </section>

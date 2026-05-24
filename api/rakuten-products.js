@@ -30,6 +30,11 @@ function buildKeywords(input) {
   ).slice(0, 12);
 }
 
+function describeRakutenError(status, body, keyword) {
+  const description = body?.error_description || body?.error || body?.message || "詳細なし";
+  return `${status} ${keyword}: ${description}`;
+}
+
 function normalizeItem(rawItem, category, input) {
   const imageUrl =
     rawItem.mediumImageUrls?.[0]?.imageUrl ||
@@ -99,13 +104,17 @@ export default async function handler(request, response) {
         params.set("affiliateId", affiliateId);
       }
 
-      const rakutenResponse = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`);
+      const rakutenResponse = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`, {
+        headers: {
+          accessKey,
+        },
+      });
+      const data = await rakutenResponse.json().catch(() => ({}));
       if (!rakutenResponse.ok) {
-        requestErrors.push(`${rakutenResponse.status} ${keyword}`);
+        requestErrors.push(describeRakutenError(rakutenResponse.status, data, keyword));
         return;
       }
 
-      const data = await rakutenResponse.json();
       const entries = data.Items || data.items || [];
       entries.forEach((entry) => {
         const item = entry.Item || entry.item || entry;
