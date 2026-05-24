@@ -57,6 +57,25 @@ function getImageUrl(...imageGroups) {
   return "";
 }
 
+const categoryMatchers = [
+  { category: "クレンジング", pattern: /(クレンジング|メイク落とし|cleansing|cleanser)/i },
+  { category: "洗顔", pattern: /(洗顔|ウォッシュ|フォーム|洗顔料|face\s*wash|facial\s*wash)/i },
+  { category: "日焼け止め", pattern: /(日焼け止め|UV|サンスクリーン|sunscreen)/i },
+  { category: "美容液", pattern: /(美容液|セラム|エッセンス|アンプル|serum|essence|ampoule)/i },
+  { category: "乳液", pattern: /(乳液|ミルク|エマルジョン|emulsion)/i },
+  { category: "化粧水", pattern: /(化粧水|ローション|トナー|化粧液|lotion|toner)/i },
+  { category: "クリーム", pattern: /(クリーム|バーム|cream|balm)/i },
+  { category: "パック", pattern: /(パック|マスク|フェイスマスク|sheet\s*mask|mask)/i },
+];
+
+function inferCategory(itemName) {
+  return categoryMatchers.find((matcher) => matcher.pattern.test(itemName))?.category || "";
+}
+
+function isAssortment(itemName) {
+  return /(セット|キット|トライアル|お試し|サンプル|スターター|福袋|\d+\s*点)/i.test(itemName);
+}
+
 function cleanItemName(itemName, category) {
   const removablePatterns = [
     /^【[^】]{1,18}】\s*/g,
@@ -126,26 +145,40 @@ function cleanItemName(itemName, category) {
 
 function normalizeItem(rawItem, category, input) {
   const imageUrl = getImageUrl(rawItem.mediumImageUrls, rawItem.smallImageUrls, rawItem.imageUrl);
+  const detectedCategory = inferCategory(rawItem.itemName) || category;
 
   return {
     id: `rakuten-${rawItem.itemCode}`,
-    name: cleanItemName(rawItem.itemName, category),
+    name: cleanItemName(rawItem.itemName, detectedCategory),
     brand: rawItem.shopName || "楽天市場",
     price: rawItem.itemPrice,
     priceLabel: priceLabel(rawItem.itemPrice),
     imageUrl,
     affiliateUrl: rawItem.affiliateUrl || rawItem.itemUrl,
     tags: unique([
-      category,
+      detectedCategory,
       ...(input.skinTypes || []),
       ...(input.troubles || []),
-      ...(input.desiredCosmetics || []),
       priceLabel(rawItem.itemPrice),
       "楽天取得",
     ]),
     ingredients: [],
     features: ["楽天市場の商品", rawItem.shopName ? `${rawItem.shopName}取扱` : "", `${rawItem.itemPrice.toLocaleString()}円`].filter(Boolean),
   };
+}
+
+function matchesRequestedCategory(itemName, input) {
+  const requestedCategories = (input.desiredCosmetics || []).filter((category) => category !== "その他");
+  if (requestedCategories.length === 0) {
+    return true;
+  }
+
+  if (isAssortment(itemName)) {
+    return false;
+  }
+
+  const detectedCategory = inferCategory(itemName);
+  return detectedCategory ? requestedCategories.includes(detectedCategory) : false;
 }
 
 export default async function handler(request, response) {
@@ -181,7 +214,7 @@ export default async function handler(request, response) {
       hits: "30",
       field: "0",
       imageFlag: "1",
-      orFlag: "1",
+      orFlag: "0",
       sort: "standard",
     });
 
@@ -206,6 +239,9 @@ export default async function handler(request, response) {
     entries.forEach((entry) => {
       const item = entry.Item || entry.item || entry;
       if (!item?.itemCode || !item?.itemName || !item?.itemPrice) {
+        return;
+      }
+      if (!matchesRequestedCategory(item.itemName, input)) {
         return;
       }
 
