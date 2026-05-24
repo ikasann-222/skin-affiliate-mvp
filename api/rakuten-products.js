@@ -40,15 +40,78 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function getImageUrl(...imageGroups) {
+  for (const group of imageGroups) {
+    const firstImage = Array.isArray(group) ? group[0] : group;
+    if (typeof firstImage === "string") {
+      return firstImage;
+    }
+    if (firstImage?.imageUrl) {
+      return firstImage.imageUrl;
+    }
+    if (firstImage?.url) {
+      return firstImage.url;
+    }
+  }
+
+  return "";
+}
+
+function cleanItemName(itemName, category) {
+  const removablePatterns = [
+    /【[^】]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^】]*】/gi,
+    /\[[^\]]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^\]]*\]/gi,
+    /(楽天ランキング\s*\d+位|ランキング\s*\d+位|送料無料|ポイント\d+倍|クーポン|あす楽|メール便|公式ショップ|正規品)/gi,
+  ];
+  const noiseWords = new Set([
+    "大人ニキビ",
+    "思春期ニキビ",
+    "子供ニキビ",
+    "背中ニキビ",
+    "赤ニキビ",
+    "白ニキビ",
+    "敏感肌",
+    "乾燥肌",
+    "アトピー肌",
+    "肌荒れ",
+    "無添加",
+    "ノンケミカル",
+    "オーガニック",
+    "スキンケア",
+    "プレゼント",
+    "ギフト",
+  ]);
+
+  let cleanedName = itemName.replace(/　/g, " ");
+  removablePatterns.forEach((pattern) => {
+    cleanedName = cleanedName.replace(pattern, " ");
+  });
+
+  const compactTokens = cleanedName
+    .replace(/[|｜/／,，]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .filter((token) => !noiseWords.has(token))
+    .filter((token) => token !== category);
+
+  const uniqueTokens = [];
+  compactTokens.forEach((token) => {
+    if (!uniqueTokens.includes(token)) {
+      uniqueTokens.push(token);
+    }
+  });
+
+  const shortened = uniqueTokens.join(" ").trim() || itemName;
+  return shortened.length > 48 ? `${shortened.slice(0, 48)}...` : shortened;
+}
+
 function normalizeItem(rawItem, category, input) {
-  const imageUrl =
-    rawItem.mediumImageUrls?.[0]?.imageUrl ||
-    rawItem.smallImageUrls?.[0]?.imageUrl ||
-    "";
+  const imageUrl = getImageUrl(rawItem.mediumImageUrls, rawItem.smallImageUrls, rawItem.imageUrl);
 
   return {
     id: `rakuten-${rawItem.itemCode}`,
-    name: rawItem.itemName,
+    name: cleanItemName(rawItem.itemName, category),
     brand: rawItem.shopName || "楽天市場",
     price: rawItem.itemPrice,
     priceLabel: priceLabel(rawItem.itemPrice),
