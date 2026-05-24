@@ -68,6 +68,11 @@ export default async function handler(request, response) {
     return response.status(501).json({ error: "RAKUTEN_APPLICATION_ID is not configured" });
   }
 
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
+  if (!accessKey) {
+    return response.status(501).json({ error: "RAKUTEN_ACCESS_KEY is not configured" });
+  }
+
   const affiliateId = process.env.RAKUTEN_AFFILIATE_ID;
   const input = request.body || {};
   const keywords = buildKeywords(input);
@@ -79,10 +84,14 @@ export default async function handler(request, response) {
       const category = input.desiredCosmetics?.find((item) => keyword.includes(item)) || "スキンケア";
       const params = new URLSearchParams({
         applicationId,
+        accessKey,
         format: "json",
+        formatVersion: "2",
         keyword,
         hits: "30",
+        field: "0",
         imageFlag: "1",
+        orFlag: "1",
         sort: "standard",
       });
 
@@ -97,8 +106,9 @@ export default async function handler(request, response) {
       }
 
       const data = await rakutenResponse.json();
-      (data.Items || []).forEach((entry) => {
-        const item = entry.Item;
+      const entries = data.Items || data.items || [];
+      entries.forEach((entry) => {
+        const item = entry.Item || entry.item || entry;
         if (!item?.itemCode || !item?.itemName || !item?.itemPrice) {
           return;
         }
