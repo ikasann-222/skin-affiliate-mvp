@@ -1,4 +1,4 @@
-const RAKUTEN_ENDPOINT = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601";
+const RAKUTEN_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401";
 
 function unique(items) {
   return Array.from(new Set(items.filter(Boolean)));
@@ -16,13 +16,18 @@ function priceLabel(price) {
 function buildKeywords(input) {
   const desiredCosmetics = input.desiredCosmetics?.length ? input.desiredCosmetics : ["スキンケア"];
   const trouble = input.troubles?.[0] || input.customTroubleText || "";
-  const skinType = input.skinTypes?.[0] || "";
   const avoided = input.avoidedText || "";
+  const safeHints = avoided.includes("アルコール") || avoided.includes("エタノール") ? "アルコールフリー" : "";
 
-  return desiredCosmetics.slice(0, 4).map((category) => {
-    const safeHints = avoided.includes("アルコール") || avoided.includes("エタノール") ? "アルコールフリー" : "";
-    return unique([category, skinType, trouble, safeHints, "スキンケア"]).join(" ");
-  });
+  return unique(
+    desiredCosmetics.slice(0, 4).flatMap((category) => [
+      `${category} スキンケア`,
+      unique([category, trouble]).join(" "),
+      unique([category, "保湿"]).join(" "),
+      unique([category, safeHints]).join(" "),
+      category,
+    ]),
+  ).slice(0, 12);
 }
 
 function normalizeItem(rawItem, category, input) {
@@ -67,6 +72,7 @@ export default async function handler(request, response) {
   const input = request.body || {};
   const keywords = buildKeywords(input);
   const productsById = new Map();
+  const requestErrors = [];
 
   await Promise.all(
     keywords.map(async (keyword) => {
@@ -86,6 +92,7 @@ export default async function handler(request, response) {
 
       const rakutenResponse = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`);
       if (!rakutenResponse.ok) {
+        requestErrors.push(`${rakutenResponse.status} ${keyword}`);
         return;
       }
 
@@ -100,6 +107,10 @@ export default async function handler(request, response) {
       });
     }),
   );
+
+  if (productsById.size === 0 && requestErrors.length === keywords.length) {
+    return response.status(502).json({ error: `楽天APIへのリクエストに失敗しました: ${requestErrors.slice(0, 3).join(", ")}` });
+  }
 
   return response.status(200).json({
     products: Array.from(productsById.values()).slice(0, 80),
