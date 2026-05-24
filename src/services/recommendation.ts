@@ -138,7 +138,9 @@ function reasonFor(product: Product, input: DiagnosisInput, matchedTags: string[
       ? "過去に合わなかった成分の入力があるため、刺激感に配慮しやすいタグを優先しています。"
       : "はじめて選ぶ人でも比較しやすい、肌質と悩みの一致度を優先しています。";
 
-  return `${skinTypes}で${concerns}が気になる入力のため、${matched}に合う商品を上位にしています。${product.name}は${ingredients}などの成分特徴があり、${sensitivity}`;
+  const ingredientText = ingredients ? `${ingredients}などの成分特徴があり、` : "";
+
+  return `${skinTypes}で${concerns}が気になる入力のため、${matched}に合う商品を上位にしています。${ingredientText}${sensitivity}`;
 }
 
 export function rankProducts(input: DiagnosisInput, productPool: Product[], limit = 12): Recommendation[] {
