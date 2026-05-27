@@ -100,21 +100,54 @@ function searchableProductTerms(product: Product) {
   return [...product.tags, ...product.ingredients, ...product.features, product.name, product.priceLabel];
 }
 
+const skinTypeFitTags: Record<string, string[]> = {
+  敏感肌: ["敏感肌", "低刺激", "アルコールフリー", "エタノールフリー", "無添加", "弱酸性", "ゆらぎ"],
+  乾燥肌: ["乾燥肌", "保湿", "高保湿", "セラミド", "ヒアルロン酸", "しっとり", "うるおい"],
+  脂性肌: ["脂性肌", "さっぱり", "皮脂", "テカリ", "オイリー", "ノンコメド"],
+  混合肌: ["混合肌", "バランス", "水分油分", "インナードライ"],
+  普通肌: ["普通肌", "全肌質", "すべての肌"],
+};
+
+const sensitiveCautionTags = ["ピーリング", "スクラブ", "レチノール", "高濃度", "AHA", "BHA", "角質ケア"];
+
+function hasTerm(searchableTerms: string[], keyword: string) {
+  return searchableTerms.some((term) => term.includes(keyword) || keyword.includes(term));
+}
+
+function matchedFrom(searchableTerms: string[], keywords: string[]) {
+  return unique(keywords.filter((keyword) => hasTerm(searchableTerms, keyword)));
+}
+
 function scoreProduct(product: Product, priorityTags: string[], input: DiagnosisInput) {
   const searchableTerms = searchableProductTerms(product);
   const matchedTags = priorityTags.filter((tag) => searchableTerms.some((term) => term.includes(tag) || tag.includes(term)));
-  const skinTypeBonus = input.skinTypes.reduce((total, skinType) => total + (product.tags.includes(skinType) ? 8 : 0), 0);
-  const troubleBonus = input.troubles.reduce((total, trouble) => total + (product.tags.includes(trouble) ? 5 : 0), 0);
+  const desiredMatches = matchedFrom(searchableTerms, input.desiredCosmetics.filter((category) => category !== "その他"));
+  const troubleKeywords = unique([
+    ...input.troubles.flatMap((trouble) => troubleTags[trouble] ?? [trouble]),
+    ...textTags(input.customTroubleText),
+  ]);
+  const troubleMatches = matchedFrom(searchableTerms, troubleKeywords);
+  const skinKeywords = unique(input.skinTypes.flatMap((skinType) => skinTypeFitTags[skinType] ?? [skinType]));
+  const skinMatches = matchedFrom(searchableTerms, skinKeywords);
+  const sensitivityPenalty =
+    input.skinTypes.includes("敏感肌") && sensitiveCautionTags.some((tag) => hasTerm(searchableTerms, tag)) ? 35 : 0;
+  const sensitiveSafetyBonus =
+    input.skinTypes.includes("敏感肌") && skinMatches.some((tag) => ["敏感肌", "低刺激", "アルコールフリー", "無添加", "弱酸性"].includes(tag))
+      ? 35
+      : 0;
   const desiredBonus = input.desiredCosmetics.reduce(
-    (total, category) => total + (searchableTerms.some((term) => term.includes(category)) ? 7 : 0),
+    (total, category) => total + (hasTerm(searchableTerms, category) ? 100 : 0),
     0,
   );
-  const ingredientBonus = priorityTags.some((tag) => product.ingredients.includes(tag)) ? 4 : 0;
-  const budgetBonus = input.budgetRange && input.budgetRange !== "指定なし" && product.priceLabel === input.budgetRange ? 6 : 0;
+  const troubleBonus = troubleMatches.length * 45;
+  const skinTypeBonus = skinMatches.length * 25 + sensitiveSafetyBonus - sensitivityPenalty;
+  const ingredientBonus = priorityTags.some((tag) => product.ingredients.includes(tag)) ? 8 : 0;
+  const budgetBonus = input.budgetRange && input.budgetRange !== "指定なし" && product.priceLabel === input.budgetRange ? 10 : 0;
+  const functionalScore = desiredBonus + troubleBonus + skinTypeBonus + matchedTags.length * 3 + ingredientBonus;
 
   return {
-    score: matchedTags.length * 10 + skinTypeBonus + troubleBonus + desiredBonus + ingredientBonus + budgetBonus,
-    matchedTags,
+    score: functionalScore + budgetBonus,
+    matchedTags: unique([...desiredMatches, ...troubleMatches, ...skinMatches, ...matchedTags]).slice(0, 10),
   };
 }
 
@@ -133,14 +166,29 @@ function reasonFor(product: Product, input: DiagnosisInput, matchedTags: string[
   const skinTypes = input.skinTypes.join("・") || "入力された肌質";
   const matched = matchedTags.slice(0, 4).join("、") || "肌質に近い特徴";
   const ingredients = product.ingredients.slice(0, 3).join("、");
+  const categories = input.desiredCosmetics.filter((category) => category !== "その他").join("・") || "希望カテゴリ";
   const sensitivity =
+    input.skinTypes.includes("敏感肌")
+      ? "敏感肌が選ばれているため、低刺激・無添加・アルコールフリーなどの表記を特に重視しています。"
+      : input.skinTypes.includes("乾燥肌")
+        ? "乾燥肌が選ばれているため、保湿・しっとり・セラミド系の表記を重視しています。"
+        : input.skinTypes.includes("脂性肌")
+          ? "脂性肌が選ばれているため、さっぱり・皮脂ケア系の表記を重視しています。"
+          : input.avoidedText.trim().length > 0
+            ? "過去に合わなかった成分の入力があるため、刺激感に配慮しやすいタグを優先しています。"
+            : "はじめて選ぶ人でも比較しやすい、肌質と悩みの一致度を優先しています。";
+  const budgetText =
+    input.budgetRange && input.budgetRange !== "指定なし" && product.priceLabel === input.budgetRange
+      ? `価格帯も${input.budgetRange}に収まっています。`
+      : "価格よりもカテゴリ・悩み・肌質の一致度を優先しています。";
+  const sensitivityText =
     input.avoidedText.trim().length > 0
-      ? "過去に合わなかった成分の入力があるため、刺激感に配慮しやすいタグを優先しています。"
-      : "はじめて選ぶ人でも比較しやすい、肌質と悩みの一致度を優先しています。";
+      ? `${sensitivity} 避けたい成分の入力も加味しています。`
+      : sensitivity;
 
   const ingredientText = ingredients ? `${ingredients}などの成分特徴があり、` : "";
 
-  return `${skinTypes}で${concerns}が気になる入力のため、${matched}に合う商品を上位にしています。${ingredientText}${sensitivity}`;
+  return `${categories}の中から、${concerns}と${skinTypes}への合いやすさを優先しています。${matched}に合う商品を上位にしています。${ingredientText}${sensitivityText} ${budgetText}`;
 }
 
 export function rankProducts(input: DiagnosisInput, productPool: Product[], limit = 12): Recommendation[] {

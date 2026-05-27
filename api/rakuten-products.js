@@ -17,6 +17,15 @@ function priceLabel(price) {
 function buildKeywords(input) {
   const desiredCosmetics = input.desiredCosmetics?.length ? input.desiredCosmetics : ["スキンケア"];
   const trouble = input.troubles?.[0] || input.customTroubleText || "";
+  const skinHints = (input.skinTypes || [])
+    .map((skinType) => {
+      if (skinType === "敏感肌") return "敏感肌 低刺激";
+      if (skinType === "乾燥肌") return "高保湿";
+      if (skinType === "脂性肌") return "さっぱり";
+      if (skinType === "混合肌") return "バランス";
+      return "";
+    })
+    .filter(Boolean);
   const avoided = input.avoidedText || "";
   const safeHints = avoided.includes("アルコール") || avoided.includes("エタノール") ? "アルコールフリー" : "";
 
@@ -24,6 +33,7 @@ function buildKeywords(input) {
     desiredCosmetics.slice(0, 4).flatMap((category) => [
       `${category} スキンケア`,
       unique([category, trouble]).join(" "),
+      ...skinHints.map((hint) => unique([category, hint]).join(" ")),
       unique([category, "保湿"]).join(" "),
       unique([category, safeHints]).join(" "),
       category,
@@ -68,8 +78,37 @@ const categoryMatchers = [
   { category: "パック", pattern: /(パック|マスク|フェイスマスク|sheet\s*mask|mask)/i },
 ];
 
+const troubleMatchers = [
+  { tag: "ニキビ", pattern: /(ニキビ|にきび|アクネ|吹き出物|acne)/i },
+  { tag: "赤み", pattern: /(赤み|赤ら顔|肌あれ|肌荒れ|炎症|ゆらぎ)/i },
+  { tag: "毛穴", pattern: /(毛穴|角栓|黒ずみ|皮脂|ポア|pore)/i },
+  { tag: "テカリ", pattern: /(テカリ|皮脂|脂性|オイリー|oil\s*control)/i },
+  { tag: "乾燥", pattern: /(乾燥|かさつき|高保湿|保湿|うるおい|潤い|しっとり|moist|hydrating)/i },
+  { tag: "肌荒れ", pattern: /(肌荒れ|肌あれ|ゆらぎ|バリア|低刺激|敏感)/i },
+  { tag: "シミ", pattern: /(シミ|美白|ブライト|ホワイト|ビタミンC|bright|white)/i },
+  { tag: "くすみ", pattern: /(くすみ|透明感|ブライト|ビタミンC|bright)/i },
+];
+
+const skinProfileMatchers = [
+  { tag: "敏感肌", pattern: /(敏感肌|低刺激|無添加|アルコールフリー|エタノールフリー|弱酸性|パッチテスト|アレルギーテスト|ゆらぎ)/i },
+  { tag: "乾燥肌", pattern: /(乾燥肌|高保湿|保湿|しっとり|セラミド|ヒアルロン酸|moist|hydrating)/i },
+  { tag: "脂性肌", pattern: /(脂性肌|オイリー|皮脂|テカリ|さっぱり|ノンコメド|oil\s*free)/i },
+  { tag: "混合肌", pattern: /(混合肌|バランス|水分油分|インナードライ)/i },
+  { tag: "普通肌", pattern: /(普通肌|すべての肌|全肌質)/i },
+];
+
 function inferCategory(itemName) {
   return categoryMatchers.find((matcher) => matcher.pattern.test(itemName))?.category || "";
+}
+
+function inferTags(itemName) {
+  return unique([
+    ...troubleMatchers.filter((matcher) => matcher.pattern.test(itemName)).map((matcher) => matcher.tag),
+    ...skinProfileMatchers.filter((matcher) => matcher.pattern.test(itemName)).map((matcher) => matcher.tag),
+    /(低刺激|無添加|アルコールフリー|エタノールフリー|弱酸性)/i.test(itemName) ? "低刺激" : "",
+    /(高保湿|保湿|しっとり|セラミド|ヒアルロン酸|moist|hydrating)/i.test(itemName) ? "保湿" : "",
+    /(さっぱり|皮脂|オイリー|oil\s*free)/i.test(itemName) ? "さっぱり" : "",
+  ]);
 }
 
 function isAssortment(itemName) {
@@ -146,6 +185,7 @@ function cleanItemName(itemName, category) {
 function normalizeItem(rawItem, category, input) {
   const imageUrl = getImageUrl(rawItem.mediumImageUrls, rawItem.smallImageUrls, rawItem.imageUrl);
   const detectedCategory = inferCategory(rawItem.itemName) || category;
+  const inferredTags = inferTags(rawItem.itemName);
 
   return {
     id: `rakuten-${rawItem.itemCode}`,
@@ -157,8 +197,7 @@ function normalizeItem(rawItem, category, input) {
     affiliateUrl: rawItem.affiliateUrl || rawItem.itemUrl,
     tags: unique([
       detectedCategory,
-      ...(input.skinTypes || []),
-      ...(input.troubles || []),
+      ...inferredTags,
       priceLabel(rawItem.itemPrice),
       "楽天取得",
     ]),
