@@ -454,7 +454,6 @@ export default function App() {
                     ))}
                   </div>
                   <p className="price">{recommendation.product.priceLabel}</p>
-                  <p className="reason">{recommendation.reason}</p>
                   {recommendation.matchedTags.length > 0 ? (
                     <div className="match-row" aria-label="一致したタグ">
                       {recommendation.matchedTags.slice(0, 6).map((tag) => (
