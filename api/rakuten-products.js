@@ -186,6 +186,7 @@ function normalizeItem(rawItem, category, input) {
   const imageUrl = getImageUrl(rawItem.mediumImageUrls, rawItem.smallImageUrls, rawItem.imageUrl);
   const detectedCategory = inferCategory(rawItem.itemName) || category;
   const inferredTags = inferTags(rawItem.itemName);
+  const isAffiliateLink = Boolean(rawItem.affiliateUrl);
 
   return {
     id: `rakuten-${rawItem.itemCode}`,
@@ -194,7 +195,8 @@ function normalizeItem(rawItem, category, input) {
     price: rawItem.itemPrice,
     priceLabel: priceLabel(rawItem.itemPrice),
     imageUrl,
-    affiliateUrl: rawItem.affiliateUrl || rawItem.itemUrl,
+    affiliateUrl: rawItem.affiliateUrl,
+    isAffiliateLink,
     tags: unique([
       detectedCategory,
       ...inferredTags,
@@ -281,6 +283,14 @@ export default async function handler(request, response) {
         return;
       }
       if (!matchesRequestedCategory(item.itemName, input)) {
+        return;
+      }
+      if (!item.affiliateUrl) {
+        console.warn("[rakuten-products] Missing affiliateUrl; product skipped", {
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          itemUrl: item.itemUrl,
+        });
         return;
       }
 

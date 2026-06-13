@@ -66,6 +66,7 @@ export type Product = {
   priceLabel: string;
   imageUrl: string;
   affiliateUrl: string;
+  isAffiliateLink?: boolean;
   tags: string[];
   ingredients: string[];
   features: string[];
