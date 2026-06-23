@@ -142,16 +142,17 @@ function isAssortment(itemName) {
   return /(セット|キット|トライアル|お試し|サンプル|スターター|福袋|\d+\s*点)/i.test(itemName);
 }
 
-function cleanItemName(itemName, category) {
+function cleanItemName(itemName, category, shopName = "") {
   const removablePatterns = [
     /^【[^】]{1,18}】\s*/g,
     /^\[[^\]]{1,18}\]\s*/g,
     /【[^】]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^】]*】/gi,
     /\[[^\]]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^\]]*\]/gi,
-    /(楽天ランキング\s*\d+位|ランキング\s*\d+位|送料無料|ポイント\d+倍|最大P\d+倍|P\d+倍|クーポン|あす楽|メール便|公式ショップ|正規品|国内|海外|お試しセット|トライアルセット)/gi,
+    /(楽天ランキング\s*\d+位|ランキング\s*\d+位|送料無料|ポイント\d+倍|最大P\d+倍|P\d+倍|P\s*\d+倍|クーポン|あす楽|メール便|公式ショップ|正規品|国内|海外|お試しセット|トライアルセット)/gi,
     /(最大\s*)?[\d,]+\s*円\s*OFF/gi,
     /(最大\s*)?[\d,]+\s*円\s*オフ/gi,
     /(最大\s*)?[\d,]+\s*円\s*割引/gi,
+    /\d{1,2}\s*日?\s*\d{1,2}:\d{2}\s*(迄|まで|迄に|までに)?[!！]?/g,
     /\d{1,2}\s*日\s*\d{1,2}:\d{2}\s*(迄|まで)[!！]?/g,
     /(半額|割引|値引き|セール|SALE|限定|期間限定|タイムセール)[^!！。]*[!！。]?/gi,
     /\d{1,2}\s*[\/月]\s*\d{1,2}\s*\d{1,2}:\d{2}\s*[~〜～-]\s*\d{1,2}:\d{2}\s*まで[!！]?/g,
@@ -186,14 +187,34 @@ function cleanItemName(itemName, category) {
     "限定",
     "OFF",
     "off",
+    "OFFICIAL",
+    "official",
     "迄",
     "まで",
+    "当日発送",
+    "最強配送",
+    "ランキング",
+    "1位",
+    "No.1",
   ]);
+  const genericDescriptorPattern =
+    /^(保湿|高保湿|乾燥|乾燥肌|敏感肌|低刺激|さっぱり|しっとり|毛穴|ニキビ|にきび|肌荒れ|肌あれ|美白|ブライトニング|大容量|詰め替え|詰替|無添加|ノンコメド|セラミド|ヒアルロン酸|プラセンタ|ビタミンC|レチノール|化粧水|ローション|美容液|乳液|クリーム|洗顔|クレンジング|パック|マスク|スキンケア)$/i;
+  const promoTokenPattern =
+    /(最大|OFF|オフ|割引|値引き|半額|クーポン|ポイント|ランキング|送料無料|無料|限定|SALE|セール|最安|あす楽|メール便|公式|正規品|お試し|トライアル|セット|プレゼント|ギフト|当日発送|最強配送|迄|まで|No\.?1|NO\.?1)/i;
+
+  const shopTokens = shopName
+    .replace(/楽天市場店|公式ショップ|公式|OFFICIAL|official/gi, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 
   let cleanedName = itemName
     .replace(/　/g, " ")
     .replace(/[＼\\／]+/g, " ")
     .replace(/(\d)\s+(\d{3}円\s*(OFF|オフ|割引))/gi, "$1,$2");
+  shopTokens.forEach((token) => {
+    cleanedName = cleanedName.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
+  });
   removablePatterns.forEach((pattern) => {
     cleanedName = cleanedName.replace(pattern, " ");
   });
@@ -211,7 +232,7 @@ function cleanItemName(itemName, category) {
     .map((token) => token.trim())
     .filter(Boolean)
     .filter((token) => !noiseWords.has(token))
-    .filter((token) => !/^(最大|クーポン|ポイント|セール|SALE|限定|期間限定|タイムセール|割引|値引き|OFF|オフ)$/i.test(token))
+    .filter((token) => !promoTokenPattern.test(token))
     .filter((token) => !/^[\d,]+円?(OFF|オフ|割引)?$/i.test(token))
     .filter((token) => !/^\d{1,2}日?$/.test(token))
     .filter((token) => !/^\d{1,2}:\d{2}(迄|まで)?$/.test(token))
@@ -219,13 +240,22 @@ function cleanItemName(itemName, category) {
 
   const uniqueTokens = [];
   compactTokens.forEach((token) => {
-    if (!uniqueTokens.includes(token)) {
+    if (!uniqueTokens.includes(token) && (!genericDescriptorPattern.test(token) || uniqueTokens.length === 0)) {
       uniqueTokens.push(token);
     }
   });
 
-  const shortened = uniqueTokens.join(" ").trim() || itemName;
-  return shortened.length > 48 ? `${shortened.slice(0, 48)}...` : shortened;
+  const productLikeTokens = uniqueTokens.filter((token, index) => {
+    if (index === 0 && genericDescriptorPattern.test(token)) {
+      return false;
+    }
+
+    return !genericDescriptorPattern.test(token) || /\d+(ml|g|枚|本|個|包|mL)/i.test(token);
+  });
+  const titleTokens = productLikeTokens.length ? productLikeTokens : uniqueTokens;
+  const title = titleTokens.slice(0, 5).join(" ").trim() || category || itemName;
+
+  return title.length > 42 ? `${title.slice(0, 42)}...` : title;
 }
 
 function normalizeItem(rawItem, category, input) {
@@ -236,7 +266,7 @@ function normalizeItem(rawItem, category, input) {
 
   return {
     id: `rakuten-${rawItem.itemCode}`,
-    name: cleanItemName(rawItem.itemName, detectedCategory),
+    name: cleanItemName(rawItem.itemName, detectedCategory, rawItem.shopName),
     brand: rawItem.shopName || "楽天市場",
     price: rawItem.itemPrice,
     priceLabel: priceLabel(rawItem.itemPrice),
