@@ -149,10 +149,15 @@ function cleanItemName(itemName, category) {
     /【[^】]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^】]*】/gi,
     /\[[^\]]*(楽天ランキング|ランキング|送料無料|ポイント|クーポン|SALE|セール|最安|あす楽|メール便)[^\]]*\]/gi,
     /(楽天ランキング\s*\d+位|ランキング\s*\d+位|送料無料|ポイント\d+倍|最大P\d+倍|P\d+倍|クーポン|あす楽|メール便|公式ショップ|正規品|国内|海外|お試しセット|トライアルセット)/gi,
+    /(最大\s*)?[\d,]+\s*円\s*OFF/gi,
+    /(最大\s*)?[\d,]+\s*円\s*オフ/gi,
+    /(最大\s*)?[\d,]+\s*円\s*割引/gi,
+    /\d{1,2}\s*日\s*\d{1,2}:\d{2}\s*(迄|まで)[!！]?/g,
     /(半額|割引|値引き|セール|SALE|限定|期間限定|タイムセール)[^!！。]*[!！。]?/gi,
     /\d{1,2}\s*[\/月]\s*\d{1,2}\s*\d{1,2}:\d{2}\s*[~〜～-]\s*\d{1,2}:\d{2}\s*まで[!！]?/g,
     /\d{1,2}\s+\d{1,2}\s+\d{1,2}:\d{2}\s*[~〜～-]\s*\d{1,2}:\d{2}\s*まで[!！]?/g,
     /[\d,]+\s*円\s*[→〜~\-ー]\s*[\d,]+\s*円[!！]?/g,
+    /[★☆♪]+/g,
   ];
   const noiseWords = new Set([
     "大人ニキビ",
@@ -179,12 +184,22 @@ function cleanItemName(itemName, category) {
     "公式",
     "半額",
     "限定",
+    "OFF",
+    "off",
+    "迄",
+    "まで",
   ]);
 
-  let cleanedName = itemName.replace(/　/g, " ");
+  let cleanedName = itemName
+    .replace(/　/g, " ")
+    .replace(/[＼\\／]+/g, " ")
+    .replace(/(\d)\s+(\d{3}円\s*(OFF|オフ|割引))/gi, "$1,$2");
   removablePatterns.forEach((pattern) => {
     cleanedName = cleanedName.replace(pattern, " ");
   });
+  cleanedName = cleanedName
+    .replace(/^\s*(最大|クーポン|ポイント|セール|SALE|限定|期間限定|タイムセール|割引|値引き|OFF|オフ|迄|まで|!|！|★|☆|\d|,|円|:|-|~|〜|～)+\s*/gi, " ")
+    .replace(/\s+/g, " ");
   cleanedName = cleanedName
     .replace(/[【】\[\]]/g, " ")
     .replace(/^\s*(公式|正規品|ショップ|店|販売店)\s+/g, " ")
@@ -196,6 +211,10 @@ function cleanItemName(itemName, category) {
     .map((token) => token.trim())
     .filter(Boolean)
     .filter((token) => !noiseWords.has(token))
+    .filter((token) => !/^(最大|クーポン|ポイント|セール|SALE|限定|期間限定|タイムセール|割引|値引き|OFF|オフ)$/i.test(token))
+    .filter((token) => !/^[\d,]+円?(OFF|オフ|割引)?$/i.test(token))
+    .filter((token) => !/^\d{1,2}日?$/.test(token))
+    .filter((token) => !/^\d{1,2}:\d{2}(迄|まで)?$/.test(token))
     .filter((token) => token !== category);
 
   const uniqueTokens = [];
