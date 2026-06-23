@@ -14,6 +14,14 @@ function priceLabel(price) {
   return "5,000円以上";
 }
 
+const categorySearchTerms = {
+  パック: ["フェイスパック", "シートマスク", "フェイスマスク", "パック スキンケア"],
+};
+
+function searchTermsForCategory(category) {
+  return categorySearchTerms[category] || [category];
+}
+
 function buildKeywords(input) {
   const desiredCosmetics = input.desiredCosmetics?.length ? input.desiredCosmetics : ["スキンケア"];
   const trouble = input.troubles?.[0] || input.customTroubleText || "";
@@ -30,14 +38,16 @@ function buildKeywords(input) {
   const safeHints = avoided.includes("アルコール") || avoided.includes("エタノール") ? "アルコールフリー" : "";
 
   return unique(
-    desiredCosmetics.slice(0, 4).flatMap((category) => [
-      `${category} スキンケア`,
-      unique([category, trouble]).join(" "),
-      ...skinHints.map((hint) => unique([category, hint]).join(" ")),
-      unique([category, "保湿"]).join(" "),
-      unique([category, safeHints]).join(" "),
-      category,
-    ]),
+    desiredCosmetics.slice(0, 4).flatMap((category) =>
+      searchTermsForCategory(category).flatMap((searchTerm) => [
+        `${searchTerm} スキンケア`,
+        unique([searchTerm, trouble]).join(" "),
+        ...skinHints.map((hint) => unique([searchTerm, hint]).join(" ")),
+        unique([searchTerm, "保湿"]).join(" "),
+        unique([searchTerm, safeHints]).join(" "),
+        searchTerm,
+      ]),
+    ),
   ).slice(0, 12);
 }
 
@@ -75,8 +85,17 @@ const categoryMatchers = [
   { category: "乳液", pattern: /(乳液|ミルク|エマルジョン|emulsion)/i },
   { category: "化粧水", pattern: /(化粧水|ローション|トナー|化粧液|lotion|toner)/i },
   { category: "クリーム", pattern: /(クリーム|バーム|cream|balm)/i },
-  { category: "パック", pattern: /(パック|マスク|フェイスマスク|sheet\s*mask|mask)/i },
+  {
+    category: "パック",
+    pattern: /(フェイスパック|シートパック|シートマスク|フェイスマスク|美容パック|スキンケア.*パック|パック.*スキンケア|美容.*パック|顔.*パック|肌.*パック|マスク|sheet\s*mask|face\s*mask)/i,
+  },
 ];
+
+const beautyCategoryPattern =
+  /(スキンケア|コスメ|化粧品|基礎化粧品|フェイス|顔|肌|美容|保湿|化粧水|ローション|トナー|乳液|美容液|セラム|エッセンス|クリーム|洗顔|クレンジング|メイク落とし|日焼け止め|UV|パック|マスク|シートマスク|フェイスマスク)/i;
+
+const nonBeautyProductPattern =
+  /(バックパック|リュック|バッグ|鞄|かばん|トート|ポーチ|収納|旅行|アウトドア|登山|キャンプ|ランドセル|食品|食料|ご飯|米|肉|魚|野菜|冷凍|真空パック|パックご飯|詰め替えパック|カード|トレカ|パック販売|バッテリーパック|電池パック)/i;
 
 const troubleMatchers = [
   { tag: "ニキビ", pattern: /(ニキビ|にきび|アクネ|吹き出物|acne)/i },
@@ -98,7 +117,15 @@ const skinProfileMatchers = [
 ];
 
 function inferCategory(itemName) {
+  if (nonBeautyProductPattern.test(itemName)) {
+    return "";
+  }
+
   return categoryMatchers.find((matcher) => matcher.pattern.test(itemName))?.category || "";
+}
+
+function isBeautyProduct(itemName) {
+  return beautyCategoryPattern.test(itemName) && !nonBeautyProductPattern.test(itemName);
 }
 
 function inferTags(itemName) {
@@ -211,10 +238,13 @@ function normalizeItem(rawItem, category, input) {
 function matchesRequestedCategory(itemName, input) {
   const requestedCategories = (input.desiredCosmetics || []).filter((category) => category !== "その他");
   if (requestedCategories.length === 0) {
-    return true;
+    return isBeautyProduct(itemName);
   }
 
   if (isAssortment(itemName)) {
+    return false;
+  }
+  if (!isBeautyProduct(itemName)) {
     return false;
   }
 
