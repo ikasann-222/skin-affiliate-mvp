@@ -15,8 +15,6 @@ export type SkinTrouble =
   | "シミ"
   | "くすみ";
 
-export type LifestyleHabit = "睡眠不足" | "ストレス" | "マスク着用時間が長い" | "夜更かし" | "食生活の乱れ";
-
 export type CosmeticCategory =
   | "化粧水"
   | "乳液"
@@ -53,8 +51,6 @@ export type DiagnosisInput = {
   desiredCosmetics: CosmeticCategory[];
   currentProducts: CurrentCosmetic[];
   budgetRange: BudgetRange | "";
-  habits: LifestyleHabit[];
-  customHabitText: string;
   updatedAt: string;
 };
 

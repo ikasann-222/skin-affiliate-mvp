@@ -13,14 +13,6 @@ const troubleTags: Record<string, string[]> = {
   くすみ: ["くすみ", "ビタミンC", "保湿"],
 };
 
-const habitTags: Record<string, string[]> = {
-  睡眠不足: ["低刺激", "保湿"],
-  ストレス: ["敏感肌", "低刺激"],
-  マスク着用時間が長い: ["ニキビ", "赤み", "低刺激", "さっぱり"],
-  夜更かし: ["保湿", "ビタミンC"],
-  食生活の乱れ: ["ニキビ", "保湿"],
-};
-
 function unique(items: string[]) {
   return Array.from(new Set(items.filter(Boolean)));
 }
@@ -34,12 +26,6 @@ function textTags(value: string) {
   const tags: string[] = [];
 
   Object.entries(troubleTags).forEach(([keyword, mappedTags]) => {
-    if (normalized.includes(keyword)) {
-      tags.push(keyword, ...mappedTags);
-    }
-  });
-
-  Object.entries(habitTags).forEach(([keyword, mappedTags]) => {
     if (normalized.includes(keyword)) {
       tags.push(keyword, ...mappedTags);
     }
@@ -76,9 +62,7 @@ export function buildPriorityTags(input: DiagnosisInput) {
     ...input.skinTypes,
     input.ageRange === "10代" || input.ageRange === "20代" ? "学生向け" : "",
     ...input.troubles.flatMap((trouble) => troubleTags[trouble] ?? [trouble]),
-    ...input.habits.flatMap((habit) => habitTags[habit] ?? []),
     ...textTags(input.customTroubleText),
-    ...textTags(input.customHabitText),
     ...input.desiredCosmetics,
     input.budgetRange && input.budgetRange !== "指定なし" ? input.budgetRange : "",
   ];
